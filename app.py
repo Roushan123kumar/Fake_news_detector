@@ -1,21 +1,34 @@
-import os
 import streamlit as st
 import joblib
+import boto3
+from io import BytesIO
 import numpy as np
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer 
+from sklearn.feature_extraction.text import TfidfVectorizer
 
-# Configure Streamlit to run on EB expected port
-os.environ["STREAMLIT_SERVER_ADDRESS"] = "0.0.0.0"
-os.environ["STREAMLIT_SERVER_PORT"] = "8080"
-
+# Streamlit page config
 st.set_page_config(page_title="Fake News Detector")
 
-# Load trained model + vectorizer
-vectorizer = joblib.load("vectorizer.jb")
-model = joblib.load("lr_model.jb")
+# AWS S3 credentials
+AWS_ACCESS_KEY = "AKIAVHXSPQR3P3JIMJWC"
+AWS_SECRET_KEY = "WzukeJGMe993Wxi9Oyik/KzI83lUZxgw4Qgog8B0"
+BUCKET_NAME = "your-bucket-name"  # <-- Replace with your actual bucket name
 
-# UI
+# Function to load files from S3
+def load_from_s3(file_name):
+    s3 = boto3.client(
+        "s3",
+        aws_access_key_id=AWS_ACCESS_KEY,
+        aws_secret_access_key=AWS_SECRET_KEY
+    )
+    obj = s3.get_object(Bucket=BUCKET_NAME, Key=file_name)
+    return joblib.load(BytesIO(obj['Body'].read()))
+
+# Load vectorizer and model from S3
+vectorizer = load_from_s3("vectorizer.jb")
+model = load_from_s3("lr_model.jb")
+
+# Streamlit UI
 st.title("Fake News Detector")
 st.write("Enter a News Article below to check whether it is Fake or Real.")
 
@@ -31,4 +44,4 @@ if st.button("Check News"):
         else:
             st.error(" The News is Fake!")
     else:
-        st.warning(" Please enter some text to Analyze.")
+        st.warning(" Please enter some text to analyze.")
